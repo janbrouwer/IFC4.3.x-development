@@ -7,7 +7,7 @@ Some work is limited to the repository [Maintainers](#maintainers).
 By contributing, participants agree to follow:
 - [buildingSMART Code of Conduct](https://www.buildingsmart.org/wp-content/uploads/2023/01/Behaviour-Code-of-Conduct-Policy-2023.pdf)
 - [License agreements and Copyright Notice](../LICENSE.md)
-- [Terms of Service](https://www.buildingsmart.org/wp-content/uploads/2026/01/bSI-TermsOfService-Feb-2026.pdf)
+- [Terms of Service](https://www.buildingsmart.org/terms-of-service/)
 - [Intellectual Property Policy](https://app.box.com/s/rg081ahyq1euw8uw6efql6m2fcofm558)
 - other relevant [policies](https://www.buildingsmart.org/about/policies/)
 
