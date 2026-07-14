@@ -54,11 +54,16 @@ REPLACEMENTS = [
 ]
 
 
+DROPPED_PREFIX_TOKENS = {"rel", "pset", "qto"}
+
+
 def _split_identifier(s):
     s = s.removeprefix("Ifc")
     out = []
     for piece in re.split(r"[_\s]+", s):
         out.extend(t for t in CAMEL_BOUNDARY.split(piece) if t)
+    if out and out[0].lower() in DROPPED_PREFIX_TOKENS:
+        out = out[1:]
     return out
 
 
@@ -101,6 +106,17 @@ def _render(tokens):
     return " ".join(rendered)
 
 
+def _merge_plural_s(pieces):
+    # ['EXCHANGER', 'S'] -> ['EXCHANGERS']
+    merged = []
+    for piece in pieces:
+        if piece.lower() == "s" and merged:
+            merged[-1] += piece
+        else:
+            merged.append(piece)
+    return merged
+
+
 def _render_span(s):
     tokens = []
     for tok in _split_identifier(s):
@@ -110,7 +126,7 @@ def _render_span(s):
             and len(tok) > MAX_ACRONYM_LEN
             and tok.lower() not in TOKEN_RENDER
         ):
-            tokens.extend(wordninja.split(tok))
+            tokens.extend(_merge_plural_s(wordninja.split(tok)))
         else:
             tokens.append(tok)
     return _render(_rejoin_acronym_fragments(tokens))
