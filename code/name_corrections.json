@@ -1,12 +1,15 @@
 {
   "input_corrections": {
     "3rd": "3rd",
+    "AboveGround": "Aboveground",
     "ANNODIZED": "Anodized",
     "ASPHIXIATION": "Asphyxiation",
     "ASSIGNEE": "Assignee",
     "ASSIGNOR": "Assignor",
     "ATOMIZING": "Atomizing",
     "BALISE": "Balise",
+    "BELOWGROUND": "Belowground",
+    "BelowGround": "Belowground",
     "BIFUEL": "Bi-Fuel",
     "BILINEAR": "Bilinear",
     "BOLLARD": "Bollard",
@@ -96,6 +99,7 @@
     "chp":   "CHP",
     "co":    "CO",
     "co2":   "CO2",
+    "crs":   "CRS",
     "cwr":   "CWR",
     "dc":    "DC",
     "dx":    "DX",

@@ -30,6 +30,12 @@ CHECKS = {
     "Qto_WallBaseQuantities": "Wall Base Quantities",
     "IfcRelDefinesByProperties": "Defines By Properties",
     "Relaxations": "Relaxations",
+    "IfcGeographicCRS": "Geographic CRS",
+    "IfcProjectedCRS": "Projected CRS",
+    "AboveGround": "Aboveground",
+    "BelowGround": "Belowground",
+    "IfcFacilityPartCommonBELOWGROUND": "Facility Part Common Belowground",
+    "IfcFacilityPartCommonABOVEGROUND": "Facility Part Common Aboveground",
 }
 
 
