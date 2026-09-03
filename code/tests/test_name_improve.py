@@ -33,7 +33,6 @@ CHECKS = {
     "IfcGeographicCRS": "Geographic CRS",
     "IfcProjectedCRS": "Projected CRS",
     "AboveGround": "Aboveground",
-    "BelowGround": "Belowground",
     "IfcFacilityPartCommonBELOWGROUND": "Facility Part Common Belowground",
     "IfcFacilityPartCommonABOVEGROUND": "Facility Part Common Aboveground",
 }
