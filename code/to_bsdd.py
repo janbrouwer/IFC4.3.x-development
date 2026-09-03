@@ -331,7 +331,7 @@ def attach_pset_properties(schema, class_by_entity_id, element_index, xmi):
             logging.warning("%s: no published applicability target; skipped", pset.name)
             continue
         pset_deprecated = is_deprecated(pset)
-        for attr, (_, type_spec) in zip(pset.children, pset.definition):
+        for attr, (_, type_spec) in zip(pset.children, pset.definition, strict=True):
             prop = pset_property(pset, attr, type_spec, element_index, xmi,
                                  deprecated=pset_deprecated or is_deprecated(attr))
             if prop is None:
@@ -375,18 +375,16 @@ def annotation_codes(classes):
     codes = set(classes)
     for content in classes.values():
         for pset_code, properties in content["Psets"].items():
-            if "IfcGeometricRepresentationContext" not in pset_code:
-                codes.add(pset_code)
+            codes.add(pset_code)
             for prop_code, prop in properties.items():
-                if "IfcGeometricRepresentationContext" not in prop_code:
-                    codes.add(prop_code)
+                codes.add(prop_code)
                 codes.update(value["Value"] for value in prop.get("Values", ()))
     logical_fillers = {value for values in TYPE_TO_VALUES.values() for value in values}
     return {code for code in codes if len(code) >= ANNOTATABLE_MIN_LEN and code not in logical_fillers}
 
 
 def annotation_pattern(codes, italic_codes):
-    alternation = lambda cs: "|".join(sorted(cs, key=len, reverse=True))
+    alternation = lambda cs: "|".join(re.escape(c) for c in sorted(cs, key=len, reverse=True))
     strip = re.compile(r"_(%s)_" % alternation(italic_codes))
     wrap = re.compile(r"\b(%s)\b" % alternation(codes))
     return strip, wrap
@@ -498,6 +496,9 @@ def render_allowed_values(values, prop_code, pattern, to_translate):
 
 
 def register_property(code, prop, pattern, properties, to_translate):
+    # ponytail: first renderer of a shared code wins its package (= pot file), so a
+    # scope change can move a msgid between pot files; make attribution scope-independent
+    # when pot emission splits off
     if code in properties:
         return
     definition = annotate(prop["Definition"], pattern)
@@ -609,12 +610,15 @@ msgstr ""
 
 
 def dedupe_translations(to_translate):
-    seen, deduped = set(), []
+    kept, deduped = {}, []
     for t in to_translate:
-        if not (t["msgid"] and t["msgstr"]) or t["msgid"] in seen:
+        if not (t["msgid"] and t["msgstr"]):
             continue
-        seen.add(t["msgid"])
-        deduped.append(t)
+        if t["msgid"] not in kept:
+            kept[t["msgid"]] = t["msgstr"]
+            deduped.append(t)
+        elif kept[t["msgid"]] != t["msgstr"]:
+            logging.warning("msgid %s: conflicting msgstr dropped", t["msgid"])
     return deduped
 
 
@@ -662,6 +666,8 @@ def export(schema_path=DEFAULT_SCHEMA, output_dir=DEFAULT_OUTPUT):
     pattern = annotation_pattern(codes, schema_names | codes)
     rendered_classes, properties, to_translate = render_dictionary(classes, pattern, version)
     sort_for_emit(rendered_classes, properties)
+    assert len({c["Code"] for c in rendered_classes}) == len(rendered_classes), "class Code collision after truncation"
+    assert len({p["Code"] for p in properties}) == len(properties), "property Code collision after truncation"
 
     document = bsdd_document(rendered_classes, properties, version)
     path = output_dir / "IFC.json"

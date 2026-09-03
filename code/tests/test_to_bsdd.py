@@ -75,7 +75,7 @@ def test_class_property_code():
                                "Pset_ProtectiveDeviceTrippingUnitTimeAdjustment")
     assert long == "IsCurrentTolerancePositiveOnly_from_...PPDTUTA"
     squeezed = class_property_code("SomeRatherLongPropertyName", "Pset_SomeRatherLongPropertySetName")
-    assert "..." in squeezed and len(squeezed) <= 50 + len("_from_")
+    assert "..." in squeezed and len(squeezed) <= 50
 
 
 def test_data_type_for():
@@ -196,6 +196,31 @@ def test_inherited_duplicates_collapse_to_one_class_property():
         seen.append(cp["Code"])
     assert "PredefinedType" in properties and "FireRating" in properties
     assert "AllowedValues" not in properties["PredefinedType"]
+
+
+def test_pot_files_group_by_package_and_dedupe_first_wins(tmp_path, caplog):
+    from to_bsdd import dedupe_translations, message, write_pot_files
+
+    to_translate = [
+        message("IfcWall", "Wall", "Core"),
+        message("IfcWall_DEFINITION", "A wall.", "Core"),
+        message("IfcWall", "Wall", "Core"),                 # identical duplicate: silent
+        message("IfcWall_DEFINITION", "Another wall.", "Core"),  # conflicting duplicate: warned
+        message("FireRating", "Fire Rating", "Shared"),
+        message("", "dropped", "Core"),
+        message("NoSource", "", "Core"),
+    ]
+    deduped = dedupe_translations(to_translate)
+    assert [t["msgid"] for t in deduped] == ["IfcWall", "IfcWall_DEFINITION", "FireRating"]
+    assert deduped[1]["msgstr"] == "A wall."
+    assert "IfcWall_DEFINITION" in caplog.text
+
+    write_pot_files(to_translate, tmp_path)
+    core = (tmp_path / "pot" / "Core.pot").read_text(encoding="utf-8")
+    assert 'msgid "IfcWall"\nmsgstr "Wall"' in core and core.count('msgid "IfcWall"') == 1
+    assert "X-Crowdin-SourceKey: msgstr" in core
+    shared = (tmp_path / "pot" / "Shared.pot").read_text(encoding="utf-8")
+    assert 'msgid "FireRating"\nmsgstr "Fire Rating"' in shared
 
 
 def test_deprecated_property_is_published_with_inactive_status():
