@@ -4,15 +4,15 @@ from types import SimpleNamespace
 import pytest
 
 from to_bsdd import (
-    annotate,
     annotation_pattern,
+    wrap_wikilinks,
     class_property_code,
     data_type_for,
     descendants,
     documentation_url,
     entity_classes,
     expand_predefined_types,
-    register_property,
+    render_property_once,
     render_class_properties,
     scope_provenance,
     spine_to_top,
@@ -86,29 +86,29 @@ def test_data_type_for():
     assert data_type_for("logical") is None
 
 
-def test_annotate_wraps_published_italic_markup_as_wikilink():
+def test_wrap_wikilinks_wraps_published_italic_markup_as_wikilink():
     pattern = annotation_pattern({"IfcAlignmentHorizontal"}, {"IfcAlignmentHorizontal"})
-    assert annotate("An _IfcAlignmentHorizontal_ is", pattern) == "An [[IfcAlignmentHorizontal]] is"
+    assert wrap_wikilinks("An _IfcAlignmentHorizontal_ is", pattern) == "An [[IfcAlignmentHorizontal]] is"
 
 
-def test_annotate_still_wraps_bare_published_names():
+def test_wrap_wikilinks_still_wraps_bare_published_names():
     pattern = annotation_pattern({"IfcAlignmentSegment"}, {"IfcAlignmentSegment"})
-    assert annotate("IfcAlignmentSegment", pattern) == "[[IfcAlignmentSegment]]"
+    assert wrap_wikilinks("IfcAlignmentSegment", pattern) == "[[IfcAlignmentSegment]]"
 
 
-def test_annotate_does_not_double_wrap_when_both_forms_appear():
+def test_wrap_wikilinks_does_not_double_wrap_when_both_forms_appear():
     pattern = annotation_pattern({"IfcWall"}, {"IfcWall"})
-    assert annotate("IfcWall and _IfcWall_", pattern) == "[[IfcWall]] and [[IfcWall]]"
+    assert wrap_wikilinks("IfcWall and _IfcWall_", pattern) == "[[IfcWall]] and [[IfcWall]]"
 
 
-def test_annotate_strips_unpublished_italic_markup_to_plain_text():
+def test_wrap_wikilinks_strips_unpublished_italic_markup_to_plain_text():
     pattern = annotation_pattern({"IfcAlignmentHorizontal"}, {"IfcAlignmentHorizontal", "IfcCartesianPoint"})
-    assert annotate("An _IfcCartesianPoint_ is", pattern) == "An IfcCartesianPoint is"
+    assert wrap_wikilinks("An _IfcCartesianPoint_ is", pattern) == "An IfcCartesianPoint is"
 
 
-def test_annotate_leaves_bare_unpublished_names_untouched():
+def test_wrap_wikilinks_leaves_bare_unpublished_names_untouched():
     pattern = annotation_pattern({"IfcAlignmentHorizontal"}, {"IfcAlignmentHorizontal", "IfcCartesianPoint"})
-    assert annotate("IfcCartesianPoint here", pattern) == "IfcCartesianPoint here"
+    assert wrap_wikilinks("IfcCartesianPoint here", pattern) == "IfcCartesianPoint here"
 
 
 def test_allowed_value_labels_stay_plain_but_lose_italic_markup():
@@ -198,16 +198,16 @@ def test_inherited_duplicates_collapse_to_one_class_property():
 
 
 def test_pot_files_group_by_package_and_dedupe_first_wins(tmp_path, caplog):
-    from to_bsdd import dedupe_translations, message, write_pot_files
+    from to_bsdd import dedupe_translations, pot_entry, write_pot_files
 
     to_translate = [
-        message("IfcWall", "Wall", "Core"),
-        message("IfcWall_DEFINITION", "A wall.", "Core"),
-        message("IfcWall", "Wall", "Core"),                 # identical duplicate: silent
-        message("IfcWall_DEFINITION", "Another wall.", "Core"),  # conflicting duplicate: warned
-        message("FireRating", "Fire Rating", "Shared"),
-        message("", "dropped", "Core"),
-        message("NoSource", "", "Core"),
+        pot_entry("IfcWall", "Wall", "Core"),
+        pot_entry("IfcWall_DEFINITION", "A wall.", "Core"),
+        pot_entry("IfcWall", "Wall", "Core"),                 # identical duplicate: silent
+        pot_entry("IfcWall_DEFINITION", "Another wall.", "Core"),  # conflicting duplicate: warned
+        pot_entry("FireRating", "Fire Rating", "Shared"),
+        pot_entry("", "dropped", "Core"),
+        pot_entry("NoSource", "", "Core"),
     ]
     deduped = dedupe_translations(to_translate)
     assert [t["msgid"] for t in deduped] == ["IfcWall", "IfcWall_DEFINITION", "FireRating"]
@@ -224,8 +224,8 @@ def test_pot_files_group_by_package_and_dedupe_first_wins(tmp_path, caplog):
 
 def test_deprecated_property_is_published_with_inactive_status():
     properties = {}
-    register_property("Reference", _prop("Reference", Deprecated=True), NO_ANNOTATION, properties, [])
-    register_property("FireRating", _prop("Fire Rating"), NO_ANNOTATION, properties, [])
+    render_property_once("Reference", _prop("Reference", Deprecated=True), NO_ANNOTATION, properties, [])
+    render_property_once("FireRating", _prop("Fire Rating"), NO_ANNOTATION, properties, [])
     assert properties["Reference"]["Status"] == "Inactive"
     assert "Status" not in properties["FireRating"]
 

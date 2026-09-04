@@ -8,8 +8,8 @@ Reads a modular .uml schema and writes into an output directory:
 Scope policy -- no exclusion list. A class is published iff, for some anchor
 in ANCHORS, it is a descendant of that anchor or on the anchor's supertype
 spine climbing to IfcRoot; the spine only counts when it actually reaches
-IfcRoot, otherwise the anchor is its own root (this keeps geometry above
-IfcLightSource out of scope). Objectified relationships (IfcRel*), property
+IfcRoot, otherwise the anchor is its own root (this keeps the resource
+level above IfcStructuralLoad out of scope). Objectified relationships (IfcRel*), property
 definitions, the IfcTypeObject subtree and geometry/representation items are
 unreachable by construction. bSDD models the type layer as predefined types
 instead: every enum literal becomes a child class E+LITERAL pinned to that
@@ -27,13 +27,13 @@ import json
 import logging
 import re
 import sys
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from datetime import date
 from pathlib import Path
 
 from tqdm import tqdm
 
-from name_improve import definition_improve, name_improve
+from name_improve import AGGREGATION_BOUND, definition_improve, name_improve
 from xmi_document import missing_markdown, xmi_document
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -70,7 +70,6 @@ PROPERTY_KINDS = {
     "PropertyTableValue": "Complex",
 }
 
-AGGREGATION_BOUND = re.compile(r"_\w+\[")  # IfcComplexNumber_A[1:2] -> IfcComplexNumber
 VALUE_EXPLANATION = re.compile(r":\s*[A-Z]{2,}.*")
 ANNOTATABLE_MIN_LEN = 4
 
@@ -379,26 +378,26 @@ def annotation_codes(classes):
     return {code for code in codes if len(code) >= ANNOTATABLE_MIN_LEN}
 
 
+Markup = namedtuple("Markup", ["strip", "wrap"])
+
+
 def annotation_pattern(codes, italic_codes):
-    alternation = lambda cs: "|".join(re.escape(c) for c in sorted(cs, key=len, reverse=True))
-    strip = re.compile(r"_(%s)_" % alternation(italic_codes))
-    wrap = re.compile(r"\b(%s)\b" % alternation(codes))
-    return strip, wrap
+    def alternation(cs):
+        return "|".join(re.escape(c) for c in sorted(cs, key=len, reverse=True))
+    return Markup(strip=re.compile(r"_(%s)_" % alternation(italic_codes)),
+                  wrap=re.compile(r"\b(%s)\b" % alternation(codes)))
 
 
-# value labels stay plain text: bSDD stores [[..]] literally (live has "[[1000]]"), so only
-# prose fields get wrapped while labels get the italic-markup cleanup alone
-def sanitize(s, pattern):
-    strip, _ = pattern
-    return strip.sub(lambda m: m.group(1), to_str(s))
+# labels stay plain text: bSDD stores [[..]] literally (live has "[[1000]]")
+def strip_italics(s, pattern):
+    return pattern.strip.sub(lambda m: m.group(1), to_str(s))
 
 
-def annotate(s, pattern):
-    _, wrap = pattern
-    return wrap.sub(lambda m: "[[%s]]" % m.group(0), sanitize(s, pattern))
+def wrap_wikilinks(s, pattern):
+    return pattern.wrap.sub(lambda m: "[[%s]]" % m.group(0), strip_italics(s, pattern))
 
 
-def message(msgid, msgstr, package):
+def pot_entry(msgid, msgstr, package):
     return {"msgid": msgid, "msgstr": msgstr, "package": package}
 
 
@@ -415,7 +414,7 @@ def class_property_code(prop_code, pset_code):
     ):
         return prop_code + "_from_..." + "".join(ch for ch in pset_code if ch.isupper())
     suffix = re.sub("Pset_|Qto_", "", pset_code)
-    half = (41 - len(prop_code)) // 2
+    half = (CHAR_LIMIT - len(prop_code) - len("_from_") - len("...")) // 2
     return prop_code + "_from_" + suffix[:half] + "..." + suffix[len(suffix) - half:]
 
 
@@ -442,7 +441,7 @@ def render_dictionary(classes, pattern, version):
 
 
 def render_class(code, content, classes, pattern, to_translate, version):
-    definition = annotate(content["Definition"], pattern)
+    definition = wrap_wikilinks(content["Definition"], pattern)
     cls = {
         "Code": code[:CHAR_LIMIT],
         "Name": content["Name"],
@@ -459,9 +458,9 @@ def render_class(code, content, classes, pattern, to_translate, version):
         cls["ParentClassCode"] = content["Parent"]
     if "Description" in content:
         cls["Description"] = content["Description"]
-        to_translate.append(message(cls["Code"] + "_DESCRIPTION", content["Description"], content["Package"]))
-    to_translate.append(message(cls["Code"], cls["Name"], content["Package"]))
-    to_translate.append(message(cls["Code"] + "_DEFINITION", definition, content["Package"]))
+        to_translate.append(pot_entry(cls["Code"] + "_DESCRIPTION", content["Description"], content["Package"]))
+    to_translate.append(pot_entry(cls["Code"], cls["Name"], content["Package"]))
+    to_translate.append(pot_entry(cls["Code"] + "_DEFINITION", definition, content["Package"]))
     return cls
 
 
@@ -479,7 +478,7 @@ def render_class_properties(code, classes, pattern, properties, to_translate):
                 if prop.get("ValuesPerClass"):
                     cp["AllowedValues"] = render_allowed_values(prop["Values"], short, pattern, to_translate)
                 rendered.append(cp)
-                register_property(short, prop, pattern, properties, to_translate)
+                render_property_once(short, prop, pattern, properties, to_translate)
     pin = classes[code].get("PredefinedPin")
     if pin:
         for cp in rendered:
@@ -491,19 +490,18 @@ def render_class_properties(code, classes, pattern, properties, to_translate):
 def render_allowed_values(values, prop_code, pattern, to_translate):
     rendered = []
     for value in values:
-        description = sanitize(value["Description"], pattern)
+        description = strip_italics(value["Description"], pattern)
         rendered.append({"Code": value["Value"][:CHAR_LIMIT], "Value": value["Value"], "Description": description})
-        to_translate.append(message(prop_code + "_" + value["Value"], description, value["Package"]))
+        to_translate.append(pot_entry(prop_code + "_" + value["Value"], description, value["Package"]))
     return rendered
 
 
-def register_property(code, prop, pattern, properties, to_translate):
-    # ponytail: first renderer of a shared code wins its package (= pot file), so a
-    # scope change can move a msgid between pot files; make attribution scope-independent
-    # when pot emission splits off
+def render_property_once(code, prop, pattern, properties, to_translate):
+    # ponytail: first renderer of a shared code wins its package (= pot file), so scope changes
+    # can move msgids between pot files; make attribution explicit when pot emission splits off
     if code in properties:
         return
-    definition = annotate(prop["Definition"], pattern)
+    definition = wrap_wikilinks(prop["Definition"], pattern)
     rendered = {
         "Code": code,
         "Name": prop["Name"],
@@ -515,14 +513,14 @@ def register_property(code, prop, pattern, properties, to_translate):
     if prop.get("Values") and not prop.get("ValuesPerClass") and prop["Type"].lower() != "boolean":
         rendered["AllowedValues"] = render_allowed_values(prop["Values"], code, pattern, to_translate)
     if prop.get("Description"):
-        rendered["Description"] = annotate(prop["Description"], pattern)
-        to_translate.append(message(code + "_DESCRIPTION", rendered["Description"], prop["Package"]))
+        rendered["Description"] = wrap_wikilinks(prop["Description"], pattern)
+        to_translate.append(pot_entry(code + "_DESCRIPTION", rendered["Description"], prop["Package"]))
     data_type = data_type_for(prop["Type"])
     if data_type:
         rendered["DataType"] = data_type
     properties[code] = rendered
-    to_translate.append(message(code, prop["Name"], prop["Package"]))
-    to_translate.append(message(code + "_DEFINITION", definition, prop["Package"]))
+    to_translate.append(pot_entry(code, prop["Name"], prop["Package"]))
+    to_translate.append(pot_entry(code + "_DEFINITION", definition, prop["Package"]))
 
 
 def data_type_for(type_name):
@@ -535,14 +533,16 @@ def data_type_for(type_name):
 
 # --------------------------------------------------------------------------- emit
 
+def class_property_order(indexed):
+    index, cp = indexed
+    if cp["PropertySet"] == "Attributes":
+        return (cp["PropertySet"], 0, index, "")
+    return (cp["PropertySet"], 1, 0, cp["PropertyCode"])
+
+
 def sort_for_emit(classes, props):
     for cls in classes:
-        def order(indexed):
-            index, cp = indexed
-            if cp["PropertySet"] == "Attributes":
-                return (cp["PropertySet"], 0, index, "")
-            return (cp["PropertySet"], 1, 0, cp["PropertyCode"])
-        cls["ClassProperties"] = [cp for _, cp in sorted(enumerate(cls["ClassProperties"]), key=order)]
+        cls["ClassProperties"] = [cp for _, cp in sorted(enumerate(cls["ClassProperties"]), key=class_property_order)]
     classes.sort(key=lambda c: c["Code"])
     for prop in props:
         prop.get("AllowedValues", []).sort(key=lambda v: v["Value"])
