@@ -65,8 +65,9 @@ def test_build_cache_first_and_incremental(tmp_path, monkeypatch):
         "IfcWall_DESCRIPTION": "Beschrijving",
         "IfcWall_DEFINITION": "Definitie",
     })
-    rc2 = translate.build_cache(jobs=JOBS, pool="thread")
+    rc2 = translate.build_cache(use_hash=True, jobs=JOBS, pool="thread")
     assert rc2 == 0
+    translate.clear_translation_caches()
 
     out2 = translate.translate_resource("Dutch", "IfcWall")
     assert out2["DEFINITION"] == "Definitie"
