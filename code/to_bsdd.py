@@ -70,7 +70,7 @@ PROPERTY_KINDS = {
     "PropertyTableValue": "Complex",
 }
 
-AGGREGATION_BOUND = re.compile(r"_\w\[")  # IfcComplexNumber_A[1:2] -> IfcComplexNumber
+AGGREGATION_BOUND = re.compile(r"_\w+\[")  # IfcComplexNumber_A[1:2] -> IfcComplexNumber
 VALUE_EXPLANATION = re.compile(r":\s*[A-Z]{2,}.*")
 ANNOTATABLE_MIN_LEN = 4
 

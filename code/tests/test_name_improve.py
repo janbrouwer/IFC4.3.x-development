@@ -44,6 +44,14 @@ CHECKS = {
     "DOUBLECHECKBACKFLOWPREVENTER": "Double Check Back Flow Preventer",
     "PIECEWISE_BEZIER_KNOTS": "Piecewise Bezier Knots",
     "LASERSCAN_AIRBORNE": "Laserscan Airborne",
+    "THEODOLITE": "Theodolite",
+    "EVALUATOR": "Evaluator",
+    "TRANSVERSAL_WATER_REMOVAL": "Transversal Water Removal",
+    "DD0": "Dd0",
+    "TYPE_CR3_60U": "Type CR3 60U",
+    "OCSType": "OCS Type",
+    "THEAD": "T-Head",
+    "Locations_LU[1:?]_L[1:2]": "Locations",
 }
 
 
