@@ -124,25 +124,11 @@ def test_allowed_value_labels_stay_plain_but_lose_italic_markup():
     assert [v["Description"] for v in rendered] == ["Operating Temperature", "1000", "Mounted on an IfcWall"]
 
 
-def test_annotation_codes_excludes_logical_filler_values():
-    from to_bsdd import TYPE_TO_VALUES, annotation_codes
+def test_logical_properties_emit_no_allowed_values():
+    from to_bsdd import property_entry
 
-    classes = {
-        "IfcWall": {
-            "Parent": "",
-            "Psets": {
-                "Pset_WallCommon": {
-                    "IsExternal": _prop(
-                        "Is External",
-                        Values=[{"Value": v, "Description": v, "Package": "P"} for v in TYPE_TO_VALUES["logical"]],
-                    ),
-                },
-            },
-        },
-    }
-    codes = annotation_codes(classes)
-    assert not codes & set(TYPE_TO_VALUES["logical"])
-    assert annotate("TRUE or FALSE", annotation_pattern(codes, codes)) == "TRUE or FALSE"
+    entry = property_entry("AboveGround", "above ground (TRUE) or below (FALSE)", "logical", "Single", "P")
+    assert "Values" not in entry
 
 
 def test_documentation_url_points_predefined_types_at_their_entity_page():
@@ -321,13 +307,15 @@ def test_export_leaves_no_italic_markup_or_boolean_wikilinks(tmp_path):
 
     ifc_json = (tmp_path / "IFC.json").read_text(encoding="utf-8")
     assert not ITALIC_MARKUP.findall(ifc_json)
-    assert "[[TRUE]]" not in ifc_json and "[[FALSE]]" not in ifc_json and "[[UNKNOWN]]" not in ifc_json
 
     doc = json.loads(ifc_json)
     labels = [v.get("Description", "") for p in doc["Properties"] for v in p.get("AllowedValues", [])]
     labels += [v.get("Description", "") for c in doc["Classes"] for cp in c["ClassProperties"]
                for v in cp.get("AllowedValues", [])]
     assert labels and not any("[[" in label for label in labels)
+    logical = [p for p in doc["Properties"] if p.get("DataType") is None and "AllowedValues" in p
+               and {v["Value"] for v in p["AllowedValues"]} <= {"TRUE", "FALSE", "UNKNOWN"}]
+    assert not logical
 
     for unpublished in ("IfcRelAggregates", "IfcLinearPlacement", "IfcLocalPlacement",
                         "IfcShellBasedSurfaceModel", "IfcRelAssignsToGroupByFactor"):
@@ -337,4 +325,3 @@ def test_export_leaves_no_italic_markup_or_boolean_wikilinks(tmp_path):
                for m in re.finditer(r'^msgstr "(.+)"$', pot.read_text(encoding="utf-8"), re.M)]
     assert msgstrs
     assert not any(ITALIC_MARKUP.search(msgstr) for msgstr in msgstrs)
-    assert not any("[[TRUE]]" in msgstr or "[[FALSE]]" in msgstr or "[[UNKNOWN]]" in msgstr for msgstr in msgstrs)

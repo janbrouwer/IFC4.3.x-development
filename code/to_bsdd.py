@@ -60,7 +60,6 @@ CHAR_LIMIT = 50
 DEPRECATED_STATUS = "Inactive"
 PREDEFINED_TYPE = "PredefinedType"
 ENUM_FILLERS = ("USERDEFINED", "NOTDEFINED")
-TYPE_TO_VALUES = {"logical": ["TRUE", "FALSE", "UNKNOWN"]}
 DATA_TYPES = {"string": "String", "real": "Real", "number": "Real", "integer": "Integer", "boolean": "Boolean"}
 PROPERTY_KINDS = {
     "PropertySingleValue": "Single",
@@ -273,8 +272,6 @@ def property_entry(name, markdown, type_name, kind, package, values=None, descri
     }
     if description:
         entry["Description"] = description
-    if values is None:
-        values = TYPE_TO_VALUES.get(type_name.lower())
     if values:
         entry["Values"] = value_entries(values, markdown, package)
     return entry
@@ -379,8 +376,7 @@ def annotation_codes(classes):
             for prop_code, prop in properties.items():
                 codes.add(prop_code)
                 codes.update(value["Value"] for value in prop.get("Values", ()))
-    logical_fillers = {value for values in TYPE_TO_VALUES.values() for value in values}
-    return {code for code in codes if len(code) >= ANNOTATABLE_MIN_LEN and code not in logical_fillers}
+    return {code for code in codes if len(code) >= ANNOTATABLE_MIN_LEN}
 
 
 def annotation_pattern(codes, italic_codes):
