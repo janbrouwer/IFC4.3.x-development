@@ -390,10 +390,16 @@ def annotation_pattern(codes, italic_codes):
     return strip, wrap
 
 
+# value labels stay plain text: bSDD stores [[..]] literally (live has "[[1000]]"), so only
+# prose fields get wrapped while labels get the italic-markup cleanup alone
+def sanitize(s, pattern):
+    strip, _ = pattern
+    return strip.sub(lambda m: m.group(1), to_str(s))
+
+
 def annotate(s, pattern):
-    strip, wrap = pattern
-    stripped = strip.sub(lambda m: m.group(1), to_str(s))
-    return wrap.sub(lambda m: "[[%s]]" % m.group(0), stripped)
+    _, wrap = pattern
+    return wrap.sub(lambda m: "[[%s]]" % m.group(0), sanitize(s, pattern))
 
 
 def message(msgid, msgstr, package):
@@ -489,7 +495,7 @@ def render_class_properties(code, classes, pattern, properties, to_translate):
 def render_allowed_values(values, prop_code, pattern, to_translate):
     rendered = []
     for value in values:
-        description = annotate(value["Description"], pattern)
+        description = sanitize(value["Description"], pattern)
         rendered.append({"Code": value["Value"][:CHAR_LIMIT], "Value": value["Value"], "Description": description})
         to_translate.append(message(prop_code + "_" + value["Value"], description, value["Package"]))
     return rendered

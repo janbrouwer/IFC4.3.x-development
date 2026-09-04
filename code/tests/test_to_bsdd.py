@@ -111,6 +111,19 @@ def test_annotate_leaves_bare_unpublished_names_untouched():
     assert annotate("IfcCartesianPoint here", pattern) == "IfcCartesianPoint here"
 
 
+def test_allowed_value_labels_stay_plain_but_lose_italic_markup():
+    from to_bsdd import render_allowed_values
+
+    pattern = annotation_pattern({"Temperature", "IfcWall"}, {"Temperature", "IfcWall"})
+    values = [
+        {"Value": "OPERATINGTEMPERATURE", "Description": "Operating Temperature", "Package": "P"},
+        {"Value": "1000", "Description": "1000", "Package": "P"},
+        {"Value": "WALLMOUNTED", "Description": "Mounted on an _IfcWall_", "Package": "P"},
+    ]
+    rendered = render_allowed_values(values, "Prop", pattern, [])
+    assert [v["Description"] for v in rendered] == ["Operating Temperature", "1000", "Mounted on an IfcWall"]
+
+
 def test_annotation_codes_excludes_logical_filler_values():
     from to_bsdd import TYPE_TO_VALUES, annotation_codes
 
@@ -304,9 +317,17 @@ def test_export_leaves_no_italic_markup_or_boolean_wikilinks(tmp_path):
     code_dir = REPO_ROOT / "code"
     subprocess.run([sys.executable, "to_bsdd.py", str(DEFAULT_SCHEMA), str(tmp_path)], cwd=code_dir, check=True)
 
+    import json
+
     ifc_json = (tmp_path / "IFC.json").read_text(encoding="utf-8")
     assert not ITALIC_MARKUP.findall(ifc_json)
     assert "[[TRUE]]" not in ifc_json and "[[FALSE]]" not in ifc_json and "[[UNKNOWN]]" not in ifc_json
+
+    doc = json.loads(ifc_json)
+    labels = [v.get("Description", "") for p in doc["Properties"] for v in p.get("AllowedValues", [])]
+    labels += [v.get("Description", "") for c in doc["Classes"] for cp in c["ClassProperties"]
+               for v in cp.get("AllowedValues", [])]
+    assert labels and not any("[[" in label for label in labels)
 
     for unpublished in ("IfcRelAggregates", "IfcLinearPlacement", "IfcLocalPlacement",
                         "IfcShellBasedSurfaceModel", "IfcRelAssignsToGroupByFactor"):
