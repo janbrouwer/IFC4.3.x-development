@@ -93,8 +93,6 @@ PREDEFINED_TYPE_NOTE = (
 )
 
 
-# --------------------------------------------------------------------------- scope
-
 def entity_tree(entities):
     supertype_of = {e.name: e.meta["supertypes"][0] for e in entities if e.meta.get("supertypes")}
     children_of = defaultdict(set)
@@ -133,8 +131,6 @@ def scope_provenance(anchors, entity_names, supertype_of, children_of):
             provenance.setdefault(name, "supertype spine of %s" % anchor)
     return provenance
 
-
-# --------------------------------------------------------------------------- extract
 
 class schema_items:
     def __init__(self, xmi_doc):
@@ -181,8 +177,6 @@ def base_generalization(element, xmi):
         links = element / "generalization"
     return element
 
-
-# --------------------------------------------------------------------------- build classes
 
 def class_definition(item):
     # IfcShapeAspect / IfcActorRole carry malformed content markdown upstream
@@ -257,8 +251,6 @@ def predefined_type_property(entity, enum):
         "ValuesPerClass": True,
     }
 
-
-# --------------------------------------------------------------------------- attach properties
 
 def property_entry(name, markdown, type_name, kind, package, values=None, description=None, deprecated=False):
     entry = {
@@ -364,8 +356,6 @@ def attach_entity_attributes(schema, classes, xmi):
             if prop is not None:
                 target["Psets"].setdefault("Attributes", {})[AGGREGATION_BOUND.split(attr.name)[0]] = prop
 
-
-# --------------------------------------------------------------------------- render
 
 def annotation_codes(classes):
     codes = set(classes)
@@ -531,8 +521,6 @@ def data_type_for(type_name):
     return None
 
 
-# --------------------------------------------------------------------------- emit
-
 def class_property_order(indexed):
     index, cp = indexed
     if cp["PropertySet"] == "Attributes":
@@ -641,8 +629,6 @@ def write_pot_files(to_translate, output_dir):
         total += len(messages)
     print("-- Saved %s terms in %s POT files. --" % (total, len(by_package)))
 
-
-# --------------------------------------------------------------------------- main
 
 def export(schema_path=DEFAULT_SCHEMA, output_dir=DEFAULT_OUTPUT):
     schema_path, output_dir = Path(schema_path), Path(output_dir)
