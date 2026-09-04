@@ -35,6 +35,9 @@ CHECKS = {
     "AboveGround": "Aboveground",
     "IfcFacilityPartCommonBELOWGROUND": "Facility Part Common Belowground",
     "IfcFacilityPartCommonABOVEGROUND": "Facility Part Common Aboveground",
+    "IfcAlignmentHorizontalSegmentBLOSSCURVE": "Alignment Horizontal Segment Bloss Curve",
+    "IfcAlignmentHorizontalSegmentCLOTHOID": "Alignment Horizontal Segment Clothoid",
+    "IfcAlignmentCantSegmentHELMERTCURVE": "Alignment Cant Segment Helmert Curve",
 }
 
 
