@@ -38,6 +38,11 @@ CHECKS = {
     "IfcAlignmentHorizontalSegmentBLOSSCURVE": "Alignment Horizontal Segment Bloss Curve",
     "IfcAlignmentHorizontalSegmentCLOTHOID": "Alignment Horizontal Segment Clothoid",
     "IfcAlignmentCantSegmentHELMERTCURVE": "Alignment Cant Segment Helmert Curve",
+    "WELDED_AND_INSERTABLE": "Welded and Insertable",
+    "DIAZED": "Diazed",
+    "NEOZED": "Neozed",
+    "DOUBLECHECKBACKFLOWPREVENTER": "Double Check Back Flow Preventer",
+    "PIECEWISE_BEZIER_KNOTS": "Piecewise Bezier Knots",
 }
 
 
