@@ -43,6 +43,7 @@ CHECKS = {
     "NEOZED": "Neozed",
     "DOUBLECHECKBACKFLOWPREVENTER": "Double Check Back Flow Preventer",
     "PIECEWISE_BEZIER_KNOTS": "Piecewise Bezier Knots",
+    "LASERSCAN_AIRBORNE": "Laserscan Airborne",
 }
 
 
