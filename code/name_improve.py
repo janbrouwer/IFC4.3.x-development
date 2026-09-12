@@ -15,7 +15,7 @@ CORRECTION_PATTERN = re.compile(
     "|".join(re.escape(k) for k in sorted(INPUT_CORRECTIONS, key=len, reverse=True))
 )
 
-AGGREGATION_BOUND = re.compile(r"_\w\[")  # IfcComplexNumber_A[1:2] -> IfcComplexNumber
+AGGREGATION_BOUND = re.compile(r"_\w+\[")  # IfcComplexNumber_A[1:2] -> IfcComplexNumber
 CAMEL_BOUNDARY = re.compile(
     r"(?<=[a-z])(?=[A-Z0-9])"
     r"|(?<=[A-Z][A-Z])(?=[0-9])"
