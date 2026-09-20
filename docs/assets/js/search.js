@@ -26,9 +26,9 @@ function siteRoot() {
         }
     }
 
-    function buildSnippet(text, summary, match) {
+    function buildSnippet(text, match) {
         if (!match || !match.indices || !match.indices.length) {
-            return summary || '';
+            return text.length > 100 ? text.slice(0, 100) + '...' : text;
         }
 
         let first = match.indices[0];
@@ -73,7 +73,7 @@ function siteRoot() {
             let textMatch = (result.matches || []).find((match) => match.key === 'text' || match.key === 'headings');
             let summary = document.createElement('p');
             summary.className = 'search-result-summary';
-            summary.textContent = buildSnippet(item.text, item.summary, textMatch);
+            summary.textContent = buildSnippet(item.text, textMatch);
             li.appendChild(summary);
 
             resultsElement.appendChild(li);
