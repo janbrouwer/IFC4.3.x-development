@@ -8,7 +8,7 @@ This is a further elaboration of the ISO release without changes to the schema a
 
 <img src="../../../assets/img/Dongping.jpg" width="800">
 
-For those interested in contributing: this html is automatically generated from the latest published [XMI](https://github.com/buildingSMART/IFC4.x-development/tree/{{ branch }}/schemas) (with the IFC schema) and [Markdown content](https://github.com/buildingSMART/IFC4.x-development/tree/{{ branch }}/docs) (with the definitions and documentations).
+For those interested in contributing: this html is automatically generated from the latest published [XMI](https://github.com/{{ target_repo }}/tree/{{ branch }}/schemas) (with the IFC schema) and [Markdown content](https://github.com/{{ target_repo }}/tree/{{ branch }}/docs) (with the definitions and documentations).
 Use the 'edit on GitHub' button to suggest additional clarifications or typo fixes. Structural changes to the specification or semantic definitions are not allowed. Those are possible in the next version of IFC.
 
 ## Copyright
