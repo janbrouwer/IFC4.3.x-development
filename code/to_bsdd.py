@@ -59,7 +59,7 @@ REFERENCE_NOTE = (
 )
 TABLE_NOTE = (
     "Technical note: this is a specific property from IFC that takes a table as its value. That table "
-    "has two columns (lists), one with definitions and other for defined values. Read the IFC "
+    "has two columns (lists), mapping from the values in one list to the values in the other. Read the IFC "
     "documentation for more information."
 )
 PREDEFINED_TYPE_NOTE = (
