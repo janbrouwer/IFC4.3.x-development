@@ -106,9 +106,9 @@ def test_logical_properties_emit_no_allowed_values():
 
 def test_documentation_url_points_predefined_types_at_their_entity_page():
     entity, child = {"Parent": "IfcProduct"}, {"Parent": "IfcBeam", "PredefinedPin": "BEAM"}
-    assert documentation_url("IfcBeam", entity, "4.3").endswith("/IFC4_3/HTML/lexical/IfcBeam.htm")
+    assert documentation_url("IfcBeam", entity, "4.3") == (
+        "https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/lexical/IfcBeam.htm")
     assert documentation_url("IfcBeamBEAM", child, "4.3") == documentation_url("IfcBeam", entity, "4.3")
-    assert documentation_url("IfcBeam", entity, "4.0") == ""
 
 
 def _prop(name, **extra):
@@ -218,6 +218,28 @@ def test_every_documentation_url_resolves_to_a_documented_entity():
 
     pages = {path.stem for path in (REPO_ROOT / "docs" / "schemas").glob("*/*/Entities/*.md")}
     assert sorted(_real_schema_scope() - pages) == []
+
+
+@pytest.mark.integration
+def test_every_document_reference_is_a_published_lexical_page():
+    import json
+    import os
+    import urllib.request
+    from urllib.parse import urlparse
+
+    from to_bsdd import documentation_url
+    from version import version_tuple
+
+    version = "%s.%s" % tuple(version_tuple[:2])
+    references = {documentation_url(name, {}, version) for name in _real_schema_scope()}
+    lexical_dir = urlparse(next(iter(references))).path.rsplit("/", 1)[0].lstrip("/")
+    request = urllib.request.Request(
+        "https://api.github.com/repos/buildingSMART/IFC-output/git/trees/main:" + lexical_dir)
+    if os.environ.get("GITHUB_TOKEN"):
+        request.add_header("Authorization", "Bearer " + os.environ["GITHUB_TOKEN"])
+    with urllib.request.urlopen(request) as response:
+        published = {entry["path"] for entry in json.load(response)["tree"]}
+    assert sorted({r.rsplit("/", 1)[1] for r in references} - published) == []
 
 
 def _fake_entity(name, children=()):

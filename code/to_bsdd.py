@@ -29,10 +29,7 @@ ANCHORS = (
 )
 MATERIAL_CLASSES = {"IfcMaterial", "IfcConstructionMaterialResource"}
 
-DOC_URL_BY_VERSION = {
-    "4.3": "https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/lexical/%s.htm",
-}
-MORE_INFO_URL_BY_VERSION = {"4.3": "https://ifc43-docs.standards.buildingsmart.org/"}
+DOCS_URL = "https://standards.buildingsmart.org/IFC/RELEASE/IFC%s/HTML/"
 
 CHAR_LIMIT = 50
 DEPRECATED_STATUS = "Inactive"
@@ -384,11 +381,12 @@ def self_and_ancestors(code, classes):
         code = classes[code]["Parent"]
 
 
+def docs_url(version):
+    return DOCS_URL % version.replace(".", "_")
+
+
 def documentation_url(code, content, version):
-    template = DOC_URL_BY_VERSION.get(version)
-    if not template:
-        return ""
-    return template % (content["Parent"] if content.get("PredefinedPin") else code)
+    return "%slexical/%s.htm" % (docs_url(version), content["Parent"] if content.get("PredefinedPin") else code)
 
 
 def render_dictionary(classes, pattern, version):
@@ -409,9 +407,7 @@ def render_class(code, content, classes, pattern, to_translate, version):
         "ClassType": content["ClassType"],
         "ClassProperties": [],
     }
-    doc_url = documentation_url(code, content, version)
-    if doc_url:
-        cls["DocumentReference"] = doc_url
+    cls["DocumentReference"] = documentation_url(code, content, version)
     if content["Deprecated"]:
         cls["Status"] = DEPRECATED_STATUS
     if content["Parent"] in classes:
@@ -520,7 +516,7 @@ def bsdd_document(classes, props, version):
         "UseOwnUri": False,
         "License": "CC BY-ND 4.0",
         "LicenseUrl": "https://creativecommons.org/licenses/by-nd/4.0/legalcode",
-        "MoreInfoUrl": MORE_INFO_URL_BY_VERSION.get(version, ""),
+        "MoreInfoUrl": docs_url(version),
         "QualityAssuranceProcedure": (
             "IFC is a standardized digital description of built environment created by buildingSMART "
             "International and its community members. For more information read ISO 16739 and IFC "
@@ -597,8 +593,6 @@ def export(schema_path=DEFAULT_SCHEMA, output_dir=DEFAULT_OUTPUT):
     attach_entity_attributes(schema, classes, xmi_doc.xmi)
 
     version = "%s.%s" % tuple(version_tuple[:2])
-    if version not in DOC_URL_BY_VERSION:
-        logging.warning("no documentation URLs known for IFC %s, DocumentReference and MoreInfoUrl omitted", version)
     codes = annotation_codes(classes)
     schema_names = entity_names | set(schema.enumerations) | {to_str(e.package) for e in schema.entities}
     pattern = annotation_pattern(codes, schema_names | codes)
