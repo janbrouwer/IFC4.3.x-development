@@ -152,9 +152,7 @@ def base_generalization(element, xmi):
 
 
 def class_definition(item):
-    # IfcShapeAspect / IfcActorRole carry malformed content markdown upstream
-    source = item.markdown_definition if item.name in ("IfcShapeAspect", "IfcActorRole") else item.markdown_content
-    return definition_improve(to_str(source))
+    return definition_improve(to_str(item.markdown_content))
 
 
 def entity_classes(entities, scope, material_classes):
