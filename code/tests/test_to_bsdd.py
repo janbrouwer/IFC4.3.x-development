@@ -1,22 +1,39 @@
+import json
+import os
 import re
+import subprocess
+import sys
+import urllib.request
 from types import SimpleNamespace
+from urllib.parse import urlparse
 
 import pytest
 
-from to_bsdd import (
+from generators import bsdd
+from generators.bsdd import (
+    ANCHORS,
+    DEFAULT_SCHEMA,
+    MATERIAL_CLASSES,
+    REPO_ROOT,
     annotation_pattern,
-    wrap_wikilinks,
+    attach_entity_attributes,
     class_property_code,
     data_type_for,
     documentation_url,
     entity_classes,
+    entity_tree,
     expand_predefined_types,
-    render_property_once,
-    value_entries,
-    attach_entity_attributes,
-    render_class_properties,
     in_anchor_cones,
+    property_entry,
+    render_allowed_values,
+    render_class_properties,
+    render_property_once,
+    schema_items,
+    value_entries,
+    wrap_wikilinks,
 )
+from generators.util.xmi_document import xmi_document
+from version import version_tuple
 
 SUPERTYPE = {
     "IfcObjectDefinition": "IfcRoot",
@@ -85,8 +102,6 @@ def test_value_entries_description_is_the_sentence_around_the_value():
 
 
 def test_allowed_value_labels_stay_plain_but_lose_italic_markup():
-    from to_bsdd import render_allowed_values
-
     pattern = annotation_pattern({"Temperature", "IfcWall"}, {"Temperature", "IfcWall"})
     values = [
         {"Value": "OPERATINGTEMPERATURE", "Description": "Operating Temperature", "Package": "P"},
@@ -98,8 +113,6 @@ def test_allowed_value_labels_stay_plain_but_lose_italic_markup():
 
 
 def test_logical_properties_emit_no_allowed_values():
-    from to_bsdd import property_entry
-
     entry = property_entry("AboveGround", "above ground (TRUE) or below (FALSE)", "logical", "Single", "P")
     assert "Values" not in entry
 
@@ -168,9 +181,6 @@ def test_parent_carries_full_enum_and_child_pins_one_value():
 
 
 def _real_schema_scope():
-    from xmi_document import xmi_document
-    from to_bsdd import ANCHORS, DEFAULT_SCHEMA, entity_tree, schema_items
-
     schema = schema_items(xmi_document(str(DEFAULT_SCHEMA)))
     supertype_of, children_of = entity_tree(schema.entities)
     return in_anchor_cones(ANCHORS, {e.name for e in schema.entities}, supertype_of, children_of)
@@ -178,8 +188,6 @@ def _real_schema_scope():
 
 @pytest.mark.integration
 def test_real_schema_scope_invariants():
-    from to_bsdd import ANCHORS
-
     scope = _real_schema_scope()
     for name in ("IfcRoot", "IfcWall", *ANCHORS):
         assert name in scope, name
@@ -189,22 +197,12 @@ def test_real_schema_scope_invariants():
 
 @pytest.mark.integration
 def test_every_documentation_url_resolves_to_a_documented_entity():
-    from to_bsdd import REPO_ROOT
-
     pages = {path.stem for path in (REPO_ROOT / "docs" / "schemas").glob("*/*/Entities/*.md")}
     assert sorted(_real_schema_scope() - pages) == []
 
 
 @pytest.mark.integration
 def test_every_document_reference_is_a_published_lexical_page():
-    import json
-    import os
-    import urllib.request
-    from urllib.parse import urlparse
-
-    from to_bsdd import documentation_url
-    from version import version_tuple
-
     version = "%s.%s" % tuple(version_tuple[:2])
     references = {documentation_url(name, {}, version) for name in _real_schema_scope()}
     lexical_dir = urlparse(next(iter(references))).path.rsplit("/", 1)[0].lstrip("/")
@@ -223,8 +221,6 @@ def _fake_entity(name, children=()):
 
 
 def test_predefined_type_children_do_not_inherit_material_classtype():
-    from to_bsdd import MATERIAL_CLASSES
-
     predefined_attr = SimpleNamespace(name="PredefinedType", node=SimpleNamespace(resolve=lambda key: "enum_id"))
     entity = _fake_entity("IfcConstructionMaterialResource", children=[predefined_attr])
     literal = SimpleNamespace(name="CONCRETE", markdown="", id="lit_concrete")
@@ -255,15 +251,9 @@ ITALIC_MARKUP = re.compile(r"_Ifc\w+_")
 
 @pytest.mark.integration
 def test_export_leaves_no_italic_markup_or_boolean_wikilinks(tmp_path):
-    import subprocess
-    import sys
-
-    from to_bsdd import DEFAULT_SCHEMA, REPO_ROOT
-
     code_dir = REPO_ROOT / "code"
-    subprocess.run([sys.executable, "to_bsdd.py", str(DEFAULT_SCHEMA), str(tmp_path)], cwd=code_dir, check=True)
-
-    import json
+    subprocess.run([sys.executable, "-m", "generators.bsdd", str(DEFAULT_SCHEMA), "--output", str(tmp_path)], cwd=code_dir, check=True)
+    subprocess.run([sys.executable, "-m", "generators.pot", str(DEFAULT_SCHEMA), "--output", str(tmp_path)], cwd=code_dir, check=True)
 
     ifc_json = (tmp_path / "IFC.json").read_text(encoding="utf-8")
     assert not ITALIC_MARKUP.findall(ifc_json)

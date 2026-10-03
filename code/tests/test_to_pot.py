@@ -1,5 +1,5 @@
-from to_bsdd import pot_entry
-from to_pot import dedupe_translations, write_pot_files
+from generators.bsdd import pot_entry
+from generators.pot import dedupe_translations, write_pot_files
 
 
 def test_pot_files_group_by_package_and_dedupe_first_wins(tmp_path, caplog):

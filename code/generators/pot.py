@@ -1,6 +1,11 @@
+import argparse
 import logging
 from collections import defaultdict
 from datetime import date
+from pathlib import Path
+
+from . import bsdd
+from .util.xmi_document import xmi_document
 
 POT_HEADER = """# Industry Foundation Classes IFC.
 # Copyright (C) {year} buildingSMART
@@ -45,3 +50,20 @@ def write_pot_files(to_translate, output_dir):
         (pot_dir / (package + ".pot")).write_text("\n".join(lines), encoding="utf-8")
         total += len(messages)
     print("-- Saved %s terms in %s POT files. --" % (total, len(by_package)))
+
+
+def run(doc, output_dir: Path) -> None:
+    write_pot_files(bsdd.dictionary(doc)[1], output_dir / "bsdd")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Generate the pot translation templates for the bSDD terms.")
+    parser.add_argument("schema", nargs="?", type=Path, default=bsdd.DEFAULT_SCHEMA, help="Path to the input schema UML.")
+    parser.add_argument("-o", "--output", type=Path, default=bsdd.DEFAULT_OUTPUT, help="Directory that receives pot/.")
+    args = parser.parse_args(argv)
+    logging.basicConfig(level=logging.INFO)
+    write_pot_files(bsdd.dictionary(xmi_document(str(args.schema)))[1], args.output)
+
+
+if __name__ == "__main__":
+    main()

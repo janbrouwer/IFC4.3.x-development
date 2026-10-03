@@ -1,21 +1,19 @@
-"""IFC UML schema -> bSDD dictionary exporter. Usage: python to_bsdd.py [<schema.uml>] [<output_dir>]"""
-
+import argparse
 import json
 import logging
 import re
-import sys
 from collections import defaultdict, namedtuple
 from datetime import datetime
 from pathlib import Path
 
 from tqdm import tqdm
 
-from name_improve import AGGREGATION_BOUND, definition_improve, name_improve
-from to_pot import write_pot_files
 from version import schema_date, version_tuple
-from xmi_document import missing_markdown, xmi_document
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from .util.name_improve import AGGREGATION_BOUND, definition_improve, name_improve
+from .util.xmi_document import missing_markdown, xmi_document
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SCHEMA = REPO_ROOT / "schemas" / "ifc4x3_add2.uml"
 DEFAULT_OUTPUT = REPO_ROOT / "output" / "bsdd"
 
@@ -528,23 +526,19 @@ def bsdd_document(classes, props, version):
     }
 
 
-def export(schema_path=DEFAULT_SCHEMA, output_dir=DEFAULT_OUTPUT):
-    schema_path, output_dir = Path(schema_path), Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    xmi_doc = xmi_document(str(schema_path))
-    xmi_doc.should_translate_pset_types = False
-    schema = schema_items(xmi_doc)
+def dictionary(doc):
+    doc.should_translate_pset_types = False
+    schema = schema_items(doc)
 
     supertype_of, children_of = entity_tree(schema.entities)
     entity_names = {e.name for e in schema.entities}
     scope = in_anchor_cones(ANCHORS, entity_names, supertype_of, children_of)
 
     classes, class_by_entity_id = entity_classes(schema.entities, scope, MATERIAL_CLASSES)
-    expand_predefined_types(schema, classes, class_by_entity_id, xmi_doc.xmi)
-    element_index = build_element_index(xmi_doc.xmi)
-    attach_pset_properties(schema, class_by_entity_id, element_index, xmi_doc.xmi)
-    attach_entity_attributes(schema, classes, xmi_doc.xmi)
+    expand_predefined_types(schema, classes, class_by_entity_id, doc.xmi)
+    element_index = build_element_index(doc.xmi)
+    attach_pset_properties(schema, class_by_entity_id, element_index, doc.xmi)
+    attach_entity_attributes(schema, classes, doc.xmi)
 
     version = "%s.%s" % tuple(version_tuple[:2])
     codes = annotation_codes(classes)
@@ -554,18 +548,29 @@ def export(schema_path=DEFAULT_SCHEMA, output_dir=DEFAULT_OUTPUT):
     sort_for_emit(rendered_classes, properties)
     assert len({c["Code"] for c in rendered_classes}) == len(rendered_classes), "class Code collision after truncation"
     assert len({p["Code"] for p in properties}) == len(properties), "property Code collision after truncation"
+    return bsdd_document(rendered_classes, properties, version), to_translate
 
-    document = bsdd_document(rendered_classes, properties, version)
-    path = output_dir / "IFC.json"
+
+def write_bsdd(doc, bsdd_dir: Path) -> None:
+    document = dictionary(doc)[0]
+    bsdd_dir.mkdir(parents=True, exist_ok=True)
+    path = bsdd_dir / "IFC.json"
     path.write_text(json.dumps(document, indent=4, ensure_ascii=False), encoding="utf-8")
-    print("-- Saved %s with %s classes and %s properties. --" % (path, len(rendered_classes), len(properties)))
-    return to_translate
+    print("-- Saved %s with %s classes and %s properties. --" % (path, len(document["Classes"]), len(document["Properties"])))
+
+
+def run(doc, output_dir: Path) -> None:
+    write_bsdd(doc, output_dir / "bsdd")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Generate the IFC bSDD dictionary (IFC.json).")
+    parser.add_argument("schema", nargs="?", type=Path, default=DEFAULT_SCHEMA, help="Path to the input schema UML.")
+    parser.add_argument("-o", "--output", type=Path, default=DEFAULT_OUTPUT, help="Directory for IFC.json.")
+    args = parser.parse_args(argv)
+    logging.basicConfig(level=logging.INFO)
+    write_bsdd(xmi_document(str(args.schema)), args.output)
 
 
 if __name__ == "__main__":
-    if {"-h", "--help"} & set(sys.argv):
-        print(__doc__)
-        sys.exit()
-    logging.basicConfig(level=logging.INFO)
-    output_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_OUTPUT
-    write_pot_files(export(*sys.argv[1:3]), output_dir)
+    main()
