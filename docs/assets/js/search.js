@@ -62,7 +62,7 @@ function siteRoot() {
             let title = document.createElement('a');
             title.className = 'search-result-title';
             title.href = new URL(item.path.replace(/^\//, ''), siteRoot()).href;
-            title.textContent = item.title;
+            title.textContent = item.title_words ? `${item.title} (${item.title_words})` : item.title;
             li.appendChild(title);
 
             let meta = document.createElement('div');
@@ -113,6 +113,7 @@ function siteRoot() {
                 threshold: 0.3,
                 keys: [
                     { name: 'title', weight: 3 },
+                    { name: 'title_words', weight: 3 },
                     { name: 'headings', weight: 2 },
                     { name: 'text', weight: 1 },
                 ],

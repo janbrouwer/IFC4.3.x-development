@@ -15,22 +15,24 @@ CAMEL_BOUNDARY = re.compile(
     r"|(?<=[0-9])(?=[A-Z][A-Za-z])"
     r"|(?<=[A-Z])(?=[A-Z][a-z])"
 )
+WORD_SEPARATOR = re.compile(r"[_\s]+")
 
 
 def split_words(text: str) -> list[str]:
     words = []
-    for token in CAMEL_BOUNDARY.split(text):
-        if not token:
-            continue
-        if token.isalpha() and token.isupper() and len(token) > 4:
-            parts = wordninja.split(token.lower())
-        else:
-            parts = [token.lower()]
-        words.extend(
-            part.removeprefix("ifc")
-            for part in parts
-            if part.removeprefix("ifc")
-        )
+    for piece in WORD_SEPARATOR.split(text):
+        for token in CAMEL_BOUNDARY.split(piece):
+            if not token:
+                continue
+            if token.isalpha() and token.isupper() and len(token) > 4:
+                parts = wordninja.split(token.lower())
+            else:
+                parts = [token.lower()]
+            words.extend(
+                part.removeprefix("ifc")
+                for part in parts
+                if part.removeprefix("ifc")
+            )
     return words
 
 
@@ -97,13 +99,14 @@ class SearchIndexBuilder:
             # remove the numbering prefix from the search, people likely do not search for this.
             title = m.groups()[-1]
 
-        headings = self._normalize_text(" ".join(node.get_text(" ", strip=True) for node in root.find_all(["h2", "h3", "h4", "h5", "h6"])))
+        heading_texts = [self._normalize_text(node.get_text(" ", strip=True)) for node in root.find_all(["h2", "h3", "h4", "h5", "h6"])]
+        headings = " ".join(filter(None, heading_texts + [self._added_words(heading) for heading in heading_texts]))
 
         first_heading = root.find("h1")
         if first_heading is not None:
             first_heading.decompose()
 
-        text = re.sub(r"\s+", " ", root.get_text(" ", strip=True)).strip()
+        text = self._normalize_text(root.get_text(" ", strip=True))
         if not text:
             return None
 
@@ -111,6 +114,7 @@ class SearchIndexBuilder:
             "id": public_path,
             "path": public_path,
             "title": title,
+            "title_words": self._added_words(title),
             "kind": self._kind_for(public_path),
             "headings": headings,
             "text": text,
@@ -159,16 +163,9 @@ class SearchIndexBuilder:
         return "page"
 
     def _normalize_text(self, value: str) -> str:
-        result = []
-        for piece in re.split(r"([_\s]+)", value):
-            if not piece:
-                continue
-            # Preserve original separators.
-            if re.fullmatch(r"[_\s]+", piece):
-                result.append(re.sub(r"\s+", " ", piece))
-                continue
-            result.append(piece)
-            words = split_words(piece)
-            if len(words) > 1 or (words and words[0] != piece.lower()):
-                result.append(" (" + " ".join(words) + ")")
-        return "".join(result).strip()
+        return re.sub(r"\s+", " ", value).strip()
+
+    def _added_words(self, value: str) -> str:
+        words = split_words(value)
+        plain = [word for word in WORD_SEPARATOR.split(value.lower()) if word]
+        return " ".join(words) if words != plain else ""
