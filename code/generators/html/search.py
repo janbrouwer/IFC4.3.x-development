@@ -85,7 +85,7 @@ class SearchIndexBuilder:
         if first_heading is not None:
             first_heading.decompose()
 
-        text = self._normalize_text(root.get_text(" ", strip=True))
+        text = re.sub(r"\s+", " ", root.get_text(" ", strip=True)).strip()
         if not text:
             return None
 
