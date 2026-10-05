@@ -15,24 +15,18 @@ CAMEL_BOUNDARY = re.compile(
     r"|(?<=[0-9])(?=[A-Z][A-Za-z])"
     r"|(?<=[A-Z])(?=[A-Z][a-z])"
 )
-WORD_SEPARATOR = re.compile(r"[_\s]+")
+WORD_SEPARATOR = re.compile(r"[\W_]+")
 
 
 def split_words(text: str) -> list[str]:
     words = []
     for piece in WORD_SEPARATOR.split(text):
         for token in CAMEL_BOUNDARY.split(piece):
-            if not token:
-                continue
             if token.isalpha() and token.isupper() and len(token) > 4:
                 parts = wordninja.split(token.lower())
             else:
                 parts = [token.lower()]
-            words.extend(
-                part.removeprefix("ifc")
-                for part in parts
-                if part.removeprefix("ifc")
-            )
+            words.extend(p for part in parts if (p := part.removeprefix("ifc")))
     return words
 
 
@@ -93,12 +87,7 @@ class SearchIndexBuilder:
         for element in root.find_all(["script", "style"]):
             element.decompose()
 
-        title = self._extract_title(public_path, soup, root)
-
-        if m := re.match(r'((\d+\.)+\d+) (.+)$', title):
-            # remove the numbering prefix from the search, people likely do not search for this.
-            title = m.groups()[-1]
-
+        title = re.sub(r'^\d+(\.\d+)*\s+', '', self._extract_title(public_path, soup, root))
         heading_texts = [self._normalize_text(node.get_text(" ", strip=True)) for node in root.find_all(["h2", "h3", "h4", "h5", "h6"])]
         headings = " ".join(filter(None, heading_texts + [self._added_words(heading) for heading in heading_texts]))
 

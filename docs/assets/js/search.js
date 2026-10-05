@@ -28,7 +28,7 @@ function siteRoot() {
 
     function buildSnippet(text, match) {
         if (!match || !match.indices || !match.indices.length) {
-            return text.length > 100 ? text.slice(0, 100) + '...' : text;
+            return text.length > 100 ? text.slice(0, 100).replace(/\s\S*$/, '') + '...' : text;
         }
 
         let first = match.indices[0];
