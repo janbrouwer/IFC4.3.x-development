@@ -16,6 +16,24 @@ CAMEL_BOUNDARY = re.compile(
     r"|(?<=[A-Z])(?=[A-Z][a-z])"
 )
 
+
+def split_words(text: str) -> list[str]:
+    words = []
+    for token in CAMEL_BOUNDARY.split(text):
+        if not token:
+            continue
+        if token.isalpha() and token.isupper() and len(token) > 4:
+            parts = wordninja.split(token.lower())
+        else:
+            parts = [token.lower()]
+        words.extend(
+            part.removeprefix("ifc")
+            for part in parts
+            if part.removeprefix("ifc")
+        )
+    return words
+
+
 class SearchIndexBuilder:
     SKIP_SELECTORS = (
         ".search-skip",
@@ -140,7 +158,7 @@ class SearchIndexBuilder:
             return "schema"
         return "page"
 
-    def _normalize_text(self, value: str, n: int = 4) -> str:
+    def _normalize_text(self, value: str) -> str:
         result = []
         for piece in re.split(r"([_\s]+)", value):
             if not piece:
@@ -150,19 +168,7 @@ class SearchIndexBuilder:
                 result.append(re.sub(r"\s+", " ", piece))
                 continue
             result.append(piece)
-            partes = []
-            for token in CAMEL_BOUNDARY.split(piece):
-                if not token:
-                    continue
-                if token.isalpha() and token.isupper() and len(token) > n:
-                    parts = wordninja.split(token.lower())
-                else:
-                    parts = [token.lower()]
-                partes.extend(
-                    part.removeprefix("ifc")
-                    for part in parts
-                    if part.removeprefix("ifc")
-                )
-            if len(partes) > 1 or (partes and partes[0] != piece.lower()):
-                result.append(" (" + " ".join(partes) + ")")
+            words = split_words(piece)
+            if len(words) > 1 or (words and words[0] != piece.lower()):
+                result.append(" (" + " ".join(words) + ")")
         return "".join(result).strip()
