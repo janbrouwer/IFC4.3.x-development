@@ -14,6 +14,15 @@ def test_pset_compare_reports_a_changed_pset(tmp_path):
     assert "Pset_X.xml\n==========" in text and "~~A~~ B" in text
 
 
+def test_pot_run_writes_under_bsdd_pot(monkeypatch, tmp_path):
+    from generators import bsdd, pot
+
+    entry = {"msgid": "IfcWall", "msgstr": "Wall", "package": "IfcSharedBldgElements"}
+    monkeypatch.setattr(bsdd, "dictionary", lambda doc: ({}, [entry]))
+    pot.run("doc", tmp_path)
+    assert 'msgid "IfcWall"' in (tmp_path / "bsdd" / "pot" / "IfcSharedBldgElements.pot").read_text(encoding="utf-8")
+
+
 def test_second_json_run_does_not_duplicate_hierarchy_members(monkeypatch, tmp_path):
     from generators import json as structure
 
@@ -24,3 +33,11 @@ def test_second_json_run_does_not_duplicate_hierarchy_members(monkeypatch, tmp_p
     hierarchy = json.loads((tmp_path / "structure.json").read_text(encoding="utf-8"))["hierarchy"]
     kernel = dict(dict(hierarchy)["Core data schemas"])["IfcKernel"]
     assert kernel["Property Sets"] == ["Pset_X"]
+
+
+def test_schema_path_parses_into_entities_that_keep_their_attributes():
+    from generators.bsdd import DEFAULT_SCHEMA
+    from generators.util.xmi_document import xmi_document
+
+    wall = next(item for item in xmi_document(DEFAULT_SCHEMA) if item.type == "ENTITY" and item.name == "IfcWall")
+    assert "PredefinedType" in [attr.name for attr in wall.children]

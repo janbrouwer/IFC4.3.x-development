@@ -118,7 +118,7 @@ jobs:
           unzip -d `python3 -c 'import site; print(site.getusersitepackages())'` /tmp/ifcopenshell_python.zip
           rm /tmp/ifcopenshell_python.zip
 
-      - name: Generate EXPRESS, XSD, property sets, JSON and bSDD
+      - name: Generate EXPRESS, XSD, property sets, JSON, bSDD and pot
         working-directory: ifc43/code
         shell: bash
         run: |

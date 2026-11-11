@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from . import bsdd, express, json, pset, xsd
+from . import bsdd, express, json, pot, pset, xsd
 from .util.xmi_document import xmi_document
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -11,7 +11,8 @@ STEPS = {
     "xsd": xsd.run,
     "pset": pset.run,
     "json": json.run,
-    "bsdd": bsdd.run,  # last: sets doc.should_translate_pset_types = False
+    "bsdd": bsdd.run,  # sets doc.should_translate_pset_types = False
+    "pot": pot.run,  # after bsdd: re-renders the bSDD dictionary
 }
 
 
